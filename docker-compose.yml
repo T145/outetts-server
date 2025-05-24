@@ -1,0 +1,29 @@
+---
+networks:
+  default:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.host_binding_ipv4: "0.0.0.0"
+volumes:
+  outetts-data:
+    labels:
+      com.aida.description: "OuteTTS storage volume"
+services:
+  outetts:
+    build:
+      dockerfile: Dockerfile
+    container_name: outetts
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - outetts-data:/root/.cache/huggingface
+      - ./:/root/
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+...

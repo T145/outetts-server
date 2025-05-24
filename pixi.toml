@@ -1,0 +1,24 @@
+[project]
+authors = ["T145 <github@t145.4wrd.cc>"]
+channels = ["nvidia", "conda-forge", "pytorch"]
+description = "OuteTTS API server"
+name = "outetts-api"
+platforms = ["win-64", "linux-64"]
+version = "0.1.0"
+
+[tasks]
+start-dev = "fastapi dev app.py"
+start-prod = "fastapi run app.py"
+
+[dependencies]
+python = "3.10.*"
+
+[pypi-dependencies]
+ruff = ">=0.11.11, <0.12"
+pyflac = ">=3.0.0, <4"
+numpy = ">=2.2.6, <3"
+fastapi = { version = ">=0.115.12, <0.116", extras = ["standard"] }
+aiofiles = ">=24.1.0, <25"
+demoji = ">=1.1.0, <2"
+soundfile = ">=0.13.1, <0.14"
+outetts = ">=0.4.4, <0.5"
