@@ -1,7 +1,4 @@
-outetts
 fastapi[standard]
-llama-cpp-python
-huggingface-hub
 aiofiles
 demoji
 pyflac

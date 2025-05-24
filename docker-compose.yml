@@ -14,11 +14,11 @@ services:
       dockerfile: Dockerfile
     container_name: outetts
     restart: unless-stopped
+    ipc: "host"
     ports:
       - "8000:8000"
     volumes:
-      - outetts-data:/root/.cache/huggingface
-      - ./:/root/
+      - outetts-data:/root/.cache/
     deploy:
       resources:
         reservations:

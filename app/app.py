@@ -13,7 +13,8 @@ import outetts
 
 STYLES = [
     {"style": "BOLD", "regex": r"\*\*(.*?)\*\*", "offset": 2},
-    {"style": "ITALIC", "regex": r"\*(.*?)\*", "offset": 1}
+    {"style": "ITALIC", "regex": r"\*(.*?)\*", "offset": 1},
+    {"style": "MONOSPACE", "regex": r"\`\`(.*?)\`\`", "offset": 2},
 ]
 
 app = FastAPI()
@@ -29,24 +30,18 @@ app.add_middleware(
 )
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
-app = FastAPI()
 interface = outetts.Interface(
-    outetts.ModelConfig(
-        #model_path="unsloth/Llama-OuteTTS-1.0-1B",
-        #tokenizer_path="unsloth/Llama-OuteTTS-1.0-1B",
-        #interface_version=outetts.InterfaceVersion.V3,
-        #backend=outetts.Backend.HF,
-        # additional_model_config={
-        #     "attn_implementation": "flash_attention_2"  # Enable flash attention if compatible
-        # },
-        device=device,
-        dtype=torch.bfloat16
+    outetts.ModelConfig.auto_config(
+        model=outetts.Models.VERSION_1_0_SIZE_1B,
+        backend=outetts.Backend.LLAMACPP,
+        quantization=outetts.LlamaCppQuantization.FP16,
     )
 )
 speaker = interface.load_speaker("bria.json")
 
+
 def remove_markdown_styles(text: str):
-    #text_styles = list()
+    # text_styles = list()
     message = str(text)
 
     for style in STYLES:
@@ -57,10 +52,10 @@ def remove_markdown_styles(text: str):
         while match:
             group = match.group()
             message = message.replace(group, group[offset:-offset], 1)
-            #text_styles.append({"style": style["style"], "start": match.start(), "length": match.end() - match.start() - offset*2})
+            # text_styles.append({"style": style["style"], "start": match.start(), "length": match.end() - match.start() - offset*2})
             match = re.search(regex, message)
 
-    #return {"message": message, "text_styles": text_styles}
+    # return {"message": message, "text_styles": text_styles}
     return message
 
 
@@ -69,21 +64,21 @@ def replace_asterisk_with_times(expression):
     # - preceded by either a digit or a closing bracket
     # - followed by either a digit or an opening bracket
     # This keeps Markdown bullet points (e.g., "* Item") unchanged.
-    pattern = r'(?<=[\d\)\}\]$])\*(?=[\d\(\{\[$])'
-    return re.sub(pattern, ' times ', expression)
+    pattern = r"(?<=[\d\)\}\]$])\*(?=[\d\(\{\[$])"
+    return re.sub(pattern, " times ", expression)
 
 
 def clean_text_for_tts(text):
     """Cleans text for better TTS output."""
 
-    text = linesep.join([s for s in text.splitlines() if s]) # Remove empty lines
-    text = demoji.replace(text, "") # Remove emoji
+    text = linesep.join([s for s in text.splitlines() if s])  # Remove empty lines
+    text = demoji.replace(text, "")  # Remove emoji
     text = remove_markdown_styles(text)
     text = text.replace(" %", "percent").replace("%", " percent")
-    text = replace_asterisk_with_times(text.replace("·", "*")).replace("*", "-") # An "*" is spoken as "asterisk" by Coqui, so we don't want any in the text.
-    text = text.replace("  +", "  -") # When preceeded by two spaces, a "+" is used to denote list items
-    text = text.replace("\r", "").strip() # Avoid replacing newlines with spaces b/c the TTS AI does well with pausing between breaks.
-    text = re.sub(" +", " ", text) # Remove all excess whitespace, so when an outline is spoken the speech sounds more natural.
+    text = replace_asterisk_with_times(text.replace("·", "*")).replace("*", "-")  # An "*" is spoken as "asterisk" by Coqui, so we don't want any in the text.
+    text = text.replace("  +", "  -")  # When preceeded by two spaces, a "+" is used to denote list items
+    text = text.replace("\r", "").strip()  # Avoid replacing newlines with spaces b/c the TTS AI does well with pausing between breaks.
+    text = re.sub(" +", " ", text)  # Remove all excess whitespace, so when an outline is spoken the speech sounds more natural.
 
     # Update all temperatures
     text = text.replace("°F", "° Fahrenheit")
@@ -106,7 +101,7 @@ async def health_check():
 @app.post("/tts")
 async def tts(
     text: str = Form(None, description="Text to convert to speech."),
-    compress: Optional[bool] = Form(True, description="Compress the audio into FLAC.")
+    compress: Optional[bool] = Form(True, description="Compress the audio into FLAC."),
 ):
     if not text:
         raise HTTPException(
@@ -114,22 +109,29 @@ async def tts(
             detail="Text to convert into speech must be provided.",
         )
 
-    async with aiofiles.tempfile.NamedTemporaryFile(mode="w+t", delete=True, suffix='.wav') as output_wav:
+    async with aiofiles.tempfile.NamedTemporaryFile(
+        mode="w+t", delete=True, suffix=".wav"
+    ) as output_wav:
         wav_file = output_wav.name
         output = interface.generate(
             config=outetts.GenerationConfig(
                 text=text,
-                #generation_type=outetts.GenerationType.CHUNKED,
+                generation_type=outetts.GenerationType.CHUNKED,
                 speaker=speaker,
-                sampler_config=outetts.SamplerConfig(mirostat=True),
+                sampler_config=outetts.SamplerConfig(
+                    temperature=0.8,
+                    min_p=0.0,
+                ),
                 max_batch_size=32,
-                server_host=server_host
+                server_host=server_host,
             )
         )
         output.save(wav_file)
 
         if compress:
-            async with aiofiles.tempfile.NamedTemporaryFile(mode="w+t", delete=True, suffix='.flac') as output_flac:
+            async with aiofiles.tempfile.NamedTemporaryFile(
+                mode="w+t", delete=True, suffix=".flac"
+            ) as output_flac:
                 flac_file = output_flac.name
                 encoder = AudioEncoder(input_file=wav_file, output_file=flac_file)
                 encoder.process()
