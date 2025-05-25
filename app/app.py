@@ -1,5 +1,3 @@
-from typing import Optional
-
 import aiofiles
 import outetts
 import torch
@@ -52,7 +50,16 @@ async def health_check():
 @app.post("/tts")
 async def tts(
     text: str = Form(None, description="Text to convert to speech."),
-    compress: Optional[bool] = Form(True, description="Compress the audio into FLAC."),
+    compress: bool | None = Form(True, description="Compress the audio into FLAC."),
+    temperature: float = 0.4,
+    repetition_penalty: float = 1.1,
+    repetition_range: int = 64,
+    top_k: int = 40,
+    top_p: float = 0.9,
+    min_p: float = 0.05,
+    mirostat_tau: int = 5,
+    mirostat_eta: float = 0.1,
+    mirostat: bool = False,
 ):
     if not text:
         raise HTTPException(
@@ -75,8 +82,15 @@ async def tts(
                 generation_type=outetts.GenerationType.CHUNKED,
                 speaker=speaker,
                 sampler_config=outetts.SamplerConfig(
-                    temperature=0.8,
-                    min_p=0.0,
+                    temperature,
+                    repetition_penalty,
+                    repetition_range,
+                    top_k,
+                    top_p,
+                    min_p,
+                    mirostat_tau,
+                    mirostat_eta,
+                    mirostat
                 ),
                 max_batch_size=32,
                 server_host=server_host,

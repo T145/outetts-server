@@ -21,7 +21,9 @@ sound_format = "flac" if compress else "wav"
 for key, test in tests.items():
     response = requests.post(url="http://localhost:8000/tts", data={
         "text": test,
-        "compress": compress
+        "compress": compress,
+        "temperature": 0.8,
+        "min_p": 0.0,
     })
 
     with open(f"{key}.{sound_format}", mode="bw") as f:
