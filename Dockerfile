@@ -39,6 +39,7 @@ COPY ./app/ ./
 # https://github.com/Dao-AILab/flash-attention/issues/1038#issuecomment-2459598112
 RUN python -m pip install --upgrade pip wheel setuptools \
     && pip install -r requirements.txt \
+    && python -m spacy download en_core_web_sm \
     && CMAKE_ARGS="-DGGML_CUDA=on" FORCE_CMAKE=1 pip install llama-cpp-python --no-cache-dir \
     # https://github.com/edwko/OuteTTS?tab=readme-ov-file#pip
     && CMAKE_ARGS="-DGGML_CUDA=on" pip install outetts --upgrade

@@ -1,0 +1,20 @@
+[project]
+name = "outetts-server"
+version = "0.1.0"
+description = "API server to interface with OuteTTS!"
+readme = "README.md"
+requires-python = ">3.10,<3.12"
+dependencies = [
+    "aiofiles>=24.1.0",
+    "demoji>=1.1.0",
+    "fastapi[all]>=0.115.12",
+    "hangul-romanize>=0.1.0",
+    "langdetect>=1.0.9",
+    "num2words>=0.5.14",
+    "pip>=25.1.1",
+    "pyflac>=3.0.0",
+    "pypinyin>=0.54.0",
+    "ruff>=0.11.11",
+    "soundfile>=0.13.1",
+    "spacy[cuda12x]>=3.8.7",
+]
