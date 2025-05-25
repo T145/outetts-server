@@ -24,5 +24,5 @@ for key, test in tests.items():
         "compress": compress
     })
 
-    with open("{}.{}".format(key, sound_format), mode="bw") as f:
+    with open(f"{key}.{sound_format}", mode="bw") as f:
         f.write(response.content)

@@ -1,5 +1,10 @@
-fastapi[standard]
+fastapi[all]
 aiofiles
 demoji
 pyflac
 soundfile
+pypinyin
+hangul_romanize
+num2words
+spacy[cuda12x]
+langdetect

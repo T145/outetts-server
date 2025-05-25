@@ -1,0 +1,22 @@
+ignore = ["E501", "E402"]
+select = [
+    # pycodestyle
+    "E",
+    # Pyflakes
+    "F",
+    # Warnings
+    "W",
+    # isort
+    "I",
+    # pyupgrade
+    "UP",
+    # flake8-bugbear
+    "B",
+    # flake8-simplify
+    "SIM",
+    # flake8-quotes
+    "Q",
+    # flake8-async
+    "ASYNC"
+]
+line-length = 132

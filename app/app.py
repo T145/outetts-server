@@ -1,15 +1,14 @@
-import re
-from os import linesep
 from typing import Optional
 
 import aiofiles
-import demoji
+import outetts
+import torch
 from fastapi import FastAPI, Form, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
+from langdetect import detect
 from pyflac import FileEncoder as AudioEncoder
-import torch
-import outetts
+from tokenizer import multilingual_cleaners
 
 STYLES = [
     {"style": "BOLD", "regex": r"\*\*(.*?)\*\*", "offset": 2},
@@ -40,54 +39,6 @@ interface = outetts.Interface(
 speaker = interface.load_speaker("bria.json")
 
 
-def remove_markdown_styles(text: str):
-    # text_styles = list()
-    message = str(text)
-
-    for style in STYLES:
-        regex = style["regex"]
-        offset = style["offset"]
-        match = re.search(regex, message)
-
-        while match:
-            group = match.group()
-            message = message.replace(group, group[offset:-offset], 1)
-            # text_styles.append({"style": style["style"], "start": match.start(), "length": match.end() - match.start() - offset*2})
-            match = re.search(regex, message)
-
-    # return {"message": message, "text_styles": text_styles}
-    return message
-
-
-def replace_asterisk_with_times(expression):
-    # This pattern matches an asterisk that is:
-    # - preceded by either a digit or a closing bracket
-    # - followed by either a digit or an opening bracket
-    # This keeps Markdown bullet points (e.g., "* Item") unchanged.
-    pattern = r"(?<=[\d\)\}\]$])\*(?=[\d\(\{\[$])"
-    return re.sub(pattern, " times ", expression)
-
-
-def clean_text_for_tts(text):
-    """Cleans text for better TTS output."""
-
-    text = linesep.join([s for s in text.splitlines() if s])  # Remove empty lines
-    text = demoji.replace(text, "")  # Remove emoji
-    text = remove_markdown_styles(text)
-    text = text.replace(" %", "percent").replace("%", " percent")
-    text = replace_asterisk_with_times(text.replace("·", "*")).replace("*", "-")  # An "*" is spoken as "asterisk" by Coqui, so we don't want any in the text.
-    text = text.replace("  +", "  -")  # When preceeded by two spaces, a "+" is used to denote list items
-    text = text.replace("\r", "").strip()  # Avoid replacing newlines with spaces b/c the TTS AI does well with pausing between breaks.
-    text = re.sub(" +", " ", text)  # Remove all excess whitespace, so when an outline is spoken the speech sounds more natural.
-
-    # Update all temperatures
-    text = text.replace("°F", "° Fahrenheit")
-    text = text.replace("°C", "° Celsius")
-    text = text.replace("°K", "° Kelvin")
-
-    return text
-
-
 @app.get("/")
 async def read_root():
     return {"device": device}
@@ -113,9 +64,14 @@ async def tts(
         mode="w+t", delete=True, suffix=".wav"
     ) as output_wav:
         wav_file = output_wav.name
+        lang_code = detect(text)
+
+        if not lang_code:
+            lang_code = "en"
+
         output = interface.generate(
             config=outetts.GenerationConfig(
-                text=text,
+                text=multilingual_cleaners(text, lang_code),
                 generation_type=outetts.GenerationType.CHUNKED,
                 speaker=speaker,
                 sampler_config=outetts.SamplerConfig(
